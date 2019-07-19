@@ -1,0 +1,11 @@
+{application,camus,
+             [{description,"CAusal MUlticast Store."},
+              {vsn,"0.0.1"},
+              {registered,[]},
+              {maintainers,["Georges Younes"]},
+              {included_applications,[]},
+              {applications,[kernel,stdlib,crypto,jsx,inets,lager,ranch,erlang_term]},
+              {mod,{camus_app,[]}},
+              {modules,[]},
+              {licenses,["Apache 2.0"]},
+              {links,[{"Github","https://github.com/LightKone/camus"}]}]}.
