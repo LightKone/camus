@@ -98,15 +98,42 @@ configure() ->
 
 %% @private
 configure_latency(Env, Var, Default) ->
-    Current = camus_config:get(Var, Default),
-    ?LOG("Current: ~p", [Current]),
-    case Current of
-        undefined ->
-            configure_var(Env, Var, Default);
-        L when is_integer(L) ->
-            configure_int(Env, Var, Default);
-        List when is_list(List) ->
-            camus_config:set(Var, List)
+    CurrentVal = camus_config:get(Var, Default),
+    ?LOG("CurrentVal: ~p", [CurrentVal]),
+    case CurrentVal of
+        [X|_] when is_integer(X) ->
+            ?LOG("set var as list: ~p", [CurrentVal]),
+            camus_config:set(Var, CurrentVal);
+        Else ->
+            CurrentStr = case Else of
+                _ when is_atom(CurrentVal) ->
+                    ?LOG("Currentval is atom ~p", [CurrentVal]),
+                    atom_to_list(CurrentVal);
+                _ when is_integer(CurrentVal) ->
+                    ?LOG("Currentval is int ~p", [CurrentVal]),
+                    integer_to_list(CurrentVal);
+                _ when is_list(CurrentVal) ->
+                    ?LOG("Currentval is list ~p", [CurrentVal]),
+                    CurrentVal;
+                _ ->
+                    ?LOG("Currentval is other ~p", [CurrentVal]),
+                    {error, CurrentVal}
+            end,
+            ?LOG("CurrentStr: ~p", [CurrentStr]),
+            EnvVal = os:getenv(Env, CurrentStr),
+            ?LOG("EnvVal: ~p", [EnvVal]),
+            case ?UTIL:is_str_int(EnvVal) of
+                true ->
+                    camus_config:set(Var, list_to_integer(EnvVal));
+                false ->
+                    case list_to_atom(EnvVal) of
+                        undefined ->
+                            camus_config:set(Var, list_to_atom(EnvVal));
+                        _ ->
+                            NewList=[begin {Int, _}=string:to_integer(Token), Int end|| Token<-string:tokens(EnvVal, " []")],
+                            camus_config:set(Var, NewList)
+                    end
+            end
     end.
 
 %% @private

@@ -31,6 +31,7 @@
          binary_to_atom/1,
          integer_to_atom/1,
          without_me/1,
+         is_str_int/1,
          connection_name/1,
          connection_name/2,
          generate_latency/2]).
@@ -192,3 +193,12 @@ generate_default_latency(L, Nodes) ->
         end,
         maps:new(),
     lists:seq(1, Len)).
+
+%% @private
+is_str_int(S) ->
+  try
+    _ = list_to_integer(S),
+    true
+  catch error:badarg ->
+    false
+  end.
