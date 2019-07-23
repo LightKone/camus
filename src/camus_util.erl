@@ -68,8 +68,9 @@ bcast(M, Module, Peers, Latency) ->
 %% @private get current time in milliseconds
 -spec get_timestamp() -> integer().
 get_timestamp() ->
-  {Mega, Sec, Micro} = os:timestamp(),
-  (Mega*1000000 + Sec)*1000 + round(Micro/1000).
+  % {Mega, Sec, Micro} = os:timestamp(),
+  % (Mega*1000000 + Sec)*1000 + round(Micro/1000).
+  os:perf_counter(?UNIT).
 
 %% @private
 get_node() ->
