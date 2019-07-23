@@ -29,6 +29,7 @@
 -define(UTIL, camus_util).
 -define(MIDDLEWARE, camus_middleware).
 -define(PS, camus_ps).
+-define(UNIT, microsecond).
 
 %% define stages for record
 -define(SLT, 0).
