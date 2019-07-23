@@ -335,11 +335,11 @@ deliver({Id, _}=Dot, VClock, Depgraph, F, Nodebitmap, N) ->
 update_stability(B, Dot, Depgraph0, F) ->
     maps:fold(
         fun(K, V, Acc) ->
-            case depgraph:get(Dot, stage, Acc) of
+            case depgraph:get({K, V}, stage, Acc) of
                 ?STB ->
                     Acc;
                 _ ->
-                    B1 = depgraph:get(Dot, bitstr, Acc),
+                    B1 = depgraph:get({K, V}, bitstr, Acc),
                     B2 = B1 band B,
                     case B1 =/= B2 of
                         true ->
