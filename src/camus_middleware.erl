@@ -165,7 +165,7 @@ handle_call({cbcast, Dot, Ctxt, Msg}, _From,
     %% filter stable deps
     Filt = fun(K, V) -> not is_stable({K, V}, VClock1, Depgraph) end,
     Preds = maps:filter(Filt, Ctxt),
-    ?LOG("Local Dot ~p has original preds ~p", [Dot, Ctxt]),        
+    ?LOG("Local Dot ~p has original preds ~p", [Dot, Ctxt]),
     ?LOG("Local Dot ~p has filtered preds ~p", [Dot, Preds]),
 
     %% add to to graph
@@ -228,8 +228,8 @@ handle_cast({remotemsg, {Id, Ctr}=Dot, P, Pyld, RRcvd},
             % For each predecessor, if not in graph add SLT
             % then add Dot to the succ of every pred
             % Bor/sum the provenenance/node bits of every undelivered pred
-            ?LOG("In deliver: middleware3: Dot is ~p", [Dot]),      
-            ?LOG("In deliver: middleware3: P is ~p", [P]),      
+            ?LOG("In deliver: middleware3: Dot is ~p", [Dot]),
+            ?LOG("In deliver: middleware3: P is ~p", [P]),
             ?LOG("In deliver: middleware3: Preds are ~p", [Preds]),
             {Depgraph2, B} = maps:fold(
                 fun(K, V, {AccG, AccB}) ->
@@ -335,7 +335,7 @@ deliver({Id, _}=Dot, VClock, Depgraph, F, Nodebitmap, N) ->
         fun(K, V, {AccVC, AccDepgraph}) ->
             ?LOG("succ: {~p, ~p}", [K, V]),
             B2 = depgraph:get({K, V}, bitstr, AccDepgraph),
-            ?LOG("bitstring of succ is: ~p", [B2]),     
+            ?LOG("bitstring of succ is: ~p", [B2]),
             ?LOG("new update B1 of succ is: ~p", [B1]),
             NewB = B2 band B1,
             ?LOG("after update band B1 of succ is: ~p", [NewB]),
@@ -363,8 +363,8 @@ update_stability(B, Dot, Depgraph0, F) ->
                     Acc;
                 _ ->
                     B1 = depgraph:get({K, V}, bitstr, Acc),
-                    ?LOG("update_stability of Dot: ~p", [Dot]),     
-                    ?LOG("B1 of Dot Pred: ~p", [B1]),       
+                    ?LOG("update_stability of Dot: ~p", [Dot]),
+                    ?LOG("B1 of Dot Pred: ~p", [B1]),
                     ?LOG("incoming B of Dot: ~p", [B]),
                     B2 = B1 band B,
                     ?LOG("B band B1: ~p", [B2]),
@@ -406,7 +406,7 @@ stabilize(Dot, Depgraph0, F) ->
         Preds
     ),
     Pyld = depgraph:get(Dot, pyld, Depgraph1),
-    Depgraph2 = depgraph:update(Dot, [{stage, ?STB}], Depgraph1),       
+    Depgraph2 = depgraph:update(Dot, [{stage, ?STB}], Depgraph1),
     ?LOG("Marked as Stable Dot: ~p", [Dot]),
     F({camus, {stable, Pyld, {Dot, Preds}}}),
     Depgraph2.
@@ -414,14 +414,14 @@ stabilize(Dot, Depgraph0, F) ->
 %% @private
 -spec deletestable(dot(), depgraph()) -> depgraph().
 deletestable({Id, _}=Dot, Depgraph0) ->
-    ?LOG("in deletestable, Dot: ~p", [Dot]),        
-    Succ = depgraph:get(Dot, succ, Depgraph0),      
+    ?LOG("in deletestable, Dot: ~p", [Dot]),
+    Succ = depgraph:get(Dot, succ, Depgraph0),
     ?LOG("in deletestable, Succ: ~p", [Succ]),
     Depgraph1 = maps:fold(
         fun(K, V, Acc) ->
             P = depgraph:get({K, V}, pred, Acc),
             ?LOG("in deletestable, P: ~p", [P]),
-            Preds = maps:remove(Id, P), 
+            Preds = maps:remove(Id, P),
             ?LOG("in deletestable, Preds: ~p", [Preds]),
             depgraph:update({K, V}, [{pred, Preds}], Acc)
         end,
