@@ -246,7 +246,7 @@ handle_cast({remotemsg, {Id, Ctr}=Dot, P, Pyld, RRcvd},
                 Preds
             ),
             % prepare values list
-            List = [{stage, ?RCV}, {bitstr, B}, {pred, P}, {pyld, Pyld}],
+            List = [{stage, ?RCV}, {bitstr, B}, {pred, Preds}, {pyld, Pyld}],
             % if SLT update, else add with succ empty
             Depgraph3 = case depgraph:is_element(Dot, Depgraph2) of
                 true ->
