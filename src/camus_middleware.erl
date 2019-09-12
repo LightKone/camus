@@ -266,7 +266,7 @@ handle_cast({remotemsg, {Id, Ctr}=Dot, P, Pyld, RRcvd},
 
     {noreply, State#state{vclock=VClockX, depgraph=DepgraphX, unacked_list=UnackedX}};
 
-handle_cast({delstable, Dot},
+handle_cast({stable, Dot},
             #state{depgraph=Depgraph0}=State) ->
 
     Depgraph1 = deletestable(Dot, Depgraph0),
