@@ -365,7 +365,7 @@ stabilize(Dot, Depgraph0, F) ->
     Preds = depgraph:get(Dot, pred, Depgraph0),
     Depgraph1 = maps:fold(
         fun(K, V, Acc) ->
-            case depgraph:get(Dot, stage, Acc) of
+            case depgraph:get({K, V}, stage, Acc) of
                 ?STB ->
                     Acc;
                 _ ->
