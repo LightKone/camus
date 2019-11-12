@@ -117,7 +117,7 @@ handle_call({setmembership, NodeList}, _From, #state{actor=Actor, rcvd=Rcvd0, la
     Length = length(Sorted),
     Membership = lists:foldl(
         fun(X, Acc) ->
-            orddict:append(lists:nth(X, Sorted), round(math:pow(2, Length-X)), Acc)
+            orddict:store(lists:nth(X, Sorted), round(math:pow(2, Length-X)), Acc)
         end,
         orddict:new(),
         lists:seq(1, Length)),
@@ -151,7 +151,7 @@ handle_call({cbcast, Dot, Ctxt, Msg}, _From,
     VClock1 = vclock:update_dot(Dot, VClock),
 
     %% calculate bitstr
-    [Bi] = orddict:fetch(Actor, Nodebitmap),
+    Bi = orddict:fetch(Actor, Nodebitmap),
     B = N - Bi,
     %% add to unacked
 
@@ -215,7 +215,7 @@ handle_cast({remotemsg, {Id, Ctr}=Dot, P, Pyld, RRcvd},
         false ->
             ?LOG("CAN try to deliver dot ~p", [Dot]),
             %% TODO ack unacked
-            [B0] = orddict:fetch(Id, Nodebitmap),
+            B0 = orddict:fetch(Id, Nodebitmap),
             {ResendList, Unacked1} = unacked:ack(RRcvd, N - B0, Unacked0),
 
             %% TODO prepend remotemsg, append Rcvd, resend
@@ -235,7 +235,7 @@ handle_cast({remotemsg, {Id, Ctr}=Dot, P, Pyld, RRcvd},
                 fun(K, V, {AccG, AccB}) ->
                     ?LOG("In deliver: middleware3: a pred is {~p, ~p}", [K, V]),
 
-                    [Bx] = orddict:fetch(K, Nodebitmap),
+                    Bx = orddict:fetch(K, Nodebitmap),
                     ?LOG("In deliver: middleware3: Bx is ~p", [Bx]),
 
                     {Depgraph1, B} = case depgraph:is_element({K, V}, AccG) of
@@ -323,8 +323,8 @@ deliver({Id, _}=Dot, VClock, Depgraph, F, Nodebitmap, N) ->
     %% update vv
     VClock1 = vclock:update_dot(Dot, VClock),
     %% Update stage and bitstr
-    [Bi] = orddict:fetch(?UTIL:get_node(), Nodebitmap),
-    [Bj] = orddict:fetch(Id, Nodebitmap),
+    Bi = orddict:fetch(?UTIL:get_node(), Nodebitmap),
+    Bj = orddict:fetch(Id, Nodebitmap),
     %% ts TF is the timestamp used sinnce something is delivered until stabilized
     Depgraph1 = depgraph:update(Dot, [{stage, ?DLV}, {bitstr, N - (Bi bor Bj)}], Depgraph),
     %% update stability
@@ -343,7 +343,7 @@ deliver({Id, _}=Dot, VClock, Depgraph, F, Nodebitmap, N) ->
             case NewB == 0 of
                 true ->
                     ?LOG("dlvr succ"),
-                    deliver({K, V}, AccVC, AccDepgraph, F, Nodebitmap, N);
+                    deliver({K, V}, AccVC, Depgraph3, F, Nodebitmap, N);
                 false ->
                     ?LOG("CANNOT dlvr succ"),
                     {AccVC, Depgraph3}
