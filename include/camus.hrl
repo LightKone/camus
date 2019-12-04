@@ -38,10 +38,10 @@
 -define(STB, 3).
 
 %% logging
--ifdef(debug).
+% -ifdef(debug).
 -define(LOG(M), lager:info(M)).
 -define(LOG(M, A), lager:info(M, A)).
--else.
--define(LOG(_M), ok).
--define(LOG(_M, _A), ok).
--endif.
+% -else.
+% -define(LOG(_M), ok).
+% -define(LOG(_M, _A), ok).
+% -endif.

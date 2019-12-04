@@ -124,6 +124,9 @@ handle_call({setmembership, NodeList}, _From, #state{actor=Actor, rcvd=Rcvd0, la
     N = round(math:pow(2, Length) - 1),
     Rcvd = rcvd:init(NodeList, Rcvd0),
     Latency = ?UTIL:generate_latency(Latency0, Sorted),
+    ?LOG("Membership is ~p", [Membership]),
+    ?LOG("bits is ~p", [N]),
+    ?LOG("rcvd is ~p", [Rcvd]),
     ?LOG("generate_latency gave the following matrixL ~p", [Latency]),
     {reply, ok, State#state{nodebitmap=Membership, bits=N, rcvd=Rcvd, latency=Latency}};
 
