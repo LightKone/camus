@@ -203,15 +203,21 @@ handle_cast({remotemsg, {Id, Ctr}=Dot, P, Pyld, RRcvd},
                    notify_function=F,
                    depgraph=Depgraph0,
                    latency=Latency,
+                   actor=Actor,
                    unacked_list=Unacked0,
                    rcvd=LRcvd,
                    bits=N,
                    nodebitmap=Nodebitmap}=State) ->
 
+    ?LOG("---Receiving Remote msg from ~p at ~p ---", [Id, Actor]),
+
     ?LOG("Received dot ~p with preds ~p, vclock is ~p", [Dot, P, VClock0]),
 
     % Case dot not received/delivered before
     {VClockX, DepgraphX, UnackedX} = case rcvd:is_rcvd(Dot, LRcvd) of
+        {error, E} ->
+            ?LOG("is_rcvd returned error ~p", [E]),
+            {VClock0, Depgraph0, Unacked0};
         true ->
             ?LOG("ALREADY SEEN dot ~p", [Dot]),
             {VClock0, Depgraph0, Unacked0};

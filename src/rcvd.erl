@@ -107,10 +107,14 @@ get_exceptions(UnRcvdList) ->
     ).
 
 %% @doc Check if a dot is in the Rcvd.
--spec is_rcvd(dot(), received()) -> boolean().
+-spec is_rcvd(dot(), received()) -> boolean() | {error, term()}.
 is_rcvd({Id, Ctr}=Dot, Rcvd) ->
-    {LastCtr, UnRcvdList} = maps:get(Id, Rcvd),
-    Ctr =< LastCtr andalso not is_exception(Dot, UnRcvdList).
+    case maps:get(Id, Rcvd) of
+        {LastCtr, UnRcvdList} when is_integer(LastCtr)->
+            Ctr =< LastCtr andalso not is_exception(Dot, UnRcvdList);
+        Ret ->
+            {error, Ret}
+    end.
 
 %% @doc Check if a dot is unrcvd.
 -spec is_unrcvd(dot(), received()) -> boolean().
