@@ -69,7 +69,13 @@ all() ->
     [
      test1,
      test2,
-     test3
+     test3,
+     test4,
+     test5,
+     test6,
+     test7,
+     test8,
+     test9
     ].
 
 %% ===================================================================
@@ -86,7 +92,24 @@ test2(_Config) ->
 test3(_Config) ->
   test(fullmesh, 5, 50, 100, [10, 20, 30, 40, 50, 60, 70, 80, 90, 100], z),
   ok.
-
+test4(_Config) ->
+  test(fullmesh, 5, 100, 50, 50, z),
+  ok.
+test5(_Config) ->
+  test(fullmesh, 5, 100, 50, undefined, z),
+  ok.
+test6(_Config) ->
+  test(fullmesh, 5, 100, 50, [10, 20, 30, 40, 50, 60, 70, 80, 90, 100], z),
+  ok.
+test7(_Config) ->
+  test(fullmesh, 5, 100, 200, 50, z),
+  ok.
+test8(_Config) ->
+  test(fullmesh, 5, 100, 200, undefined, z),
+  ok.
+test9(_Config) ->
+  test(fullmesh, 5, 100, 200, [10, 20, 30, 40, 50, 60, 70, 80, 90, 100], z),
+  ok.
 %% Test causal delivery and stability with full membership
 test(Overlay, NodesNumber, MaxMsgNumber, MaxRate, Latency, _DropRatio) ->
   Options = [{node_number, NodesNumber},
