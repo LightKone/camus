@@ -145,7 +145,6 @@ handle_call({cbcast, Dot, Ctxt, Msg}, _From,
                    unacked_list=Unacked0,
                    rcvd=Rcvd,
                    bits=N,
-                   notify_function=F,
                    nodebitmap=Nodebitmap}=State) ->
 
     ?LOG("handle_call cbcast"),
@@ -161,37 +160,13 @@ handle_call({cbcast, Dot, Ctxt, Msg}, _From,
     Unacked = unacked:add(Dot, Ctxt, Msg, B, Unacked0),
 
     %% bcast and record transmission
-    M = {remotemsg, {Id, Ctr}=Dot, Ctxt, Msg, Rcvd},
+    M = {remotemsg, Dot, Ctxt, Msg, Rcvd},
     Peers = orddict:fetch_keys(Nodebitmap),
     ?UTIL:bcast(M, ?MODULE, Peers, Latency),
 
-    %% filter stable deps
-    Filt = fun(K, V) -> not is_stable({K, V}, VClock1, Depgraph) end,
-    Preds = maps:filter(Filt, Ctxt),
-    ?LOG("Local Dot ~p has original preds ~p", [Dot, Ctxt]),
-    ?LOG("Local Dot ~p has filtered preds ~p", [Dot, Preds]),
-
-    %% add to to graph
-    Depgraph1 = maps:fold(
-        fun(K, V, Acc) ->
-            Succ0 = depgraph:get({K, V}, succ, Acc),
-            Succ1 = maps:put(Id, Ctr, Succ0),
-            depgraph:update({K, V}, [{succ, Succ1}], Acc)
-        end,
-        Depgraph,
-        Preds
-    ),
-
-    %% Update bitstr
-    List = [{stage, ?DLV}, {bitstr, B}, {pred, Preds}, {succ, maps:new()}, {pyld, Msg}],
-    Depgraph2 = depgraph:add_with(Dot, List, Depgraph1),
-
-    %% update stability
-    Depgraph3 = update_stability(B, Dot, Depgraph2, F),
-
     ?LOG("Delivered locally dot ~p, vclock is ~p, ctxt is ~p", [Dot, VClock1, Ctxt]),
 
-    {reply, ok, State#state{vclock=VClock1, depgraph=Depgraph3, unacked_list=Unacked}};
+    {reply, ok, State#state{vclock=VClock1, depgraph=Depgraph, unacked_list=Unacked}};
 
 handle_call({setnotifyfun, F}, _From, State) ->
     {reply, ok, State#state{notify_function=F}}.
@@ -231,7 +206,7 @@ handle_cast({remotemsg, {Id, Ctr}=Dot, P, Pyld, RRcvd},
             prepare_resend(ResendList, LRcvd, Latency, Id),
 
             %% filter stable
-            Filt = fun(K, V) -> not is_stable({K, V}, VClock0, Depgraph0) end,
+            Filt = fun(K, V) -> not vclock:is_element({K, V}, VClock0) end,
             Preds = maps:filter(Filt, P),
 
             % For each predecessor, if not in graph add SLT
@@ -290,14 +265,6 @@ handle_cast({remotemsg, {Id, Ctr}=Dot, P, Pyld, RRcvd},
 
     {noreply, State#state{vclock=VClockX, depgraph=DepgraphX, unacked_list=UnackedX}};
 
-handle_cast({stable, Dot},
-            #state{depgraph=Depgraph0}=State) ->
-    ?LOG("Stable Dot: ~p", [Dot]),
-
-    Depgraph1 = deletestable(Dot, Depgraph0),
-
-    {noreply, State#state{depgraph=Depgraph1}};
-
 handle_cast(Msg, State) ->
     lager:warning("Unhandled cast messages: ~p", [Msg]),
     {noreply, State}.
@@ -331,15 +298,10 @@ deliver({Id, _}=Dot, VClock, Depgraph, F, Nodebitmap, N) ->
     ?LOG("Delivered dot ~p with preds ~p, vclock is ~p", [Dot, P, VClock]),
     %% update vv
     VClock1 = vclock:update_dot(Dot, VClock),
-    %% Update stage and bitstr
-    Bi = orddict:fetch(?UTIL:get_node(), Nodebitmap),
     Bj = orddict:fetch(Id, Nodebitmap),
-    %% ts TF is the timestamp used sinnce something is delivered until stabilized
-    Depgraph1 = depgraph:update(Dot, [{stage, ?DLV}, {bitstr, N - (Bi bor Bj)}], Depgraph),
-    %% update stability
     B1 = N - Bj,
-    Depgraph2 = update_stability(B1, Dot, Depgraph1, F),
-
+    Succ = depgraph:get(Dot, succ, Depgraph),
+    Depgraph2 = depgraph:delete(Dot, Depgraph),
     maps:fold(
         fun(K, V, {AccVC, AccDepgraph}) ->
             ?LOG("succ: {~p, ~p}", [K, V]),
@@ -359,100 +321,8 @@ deliver({Id, _}=Dot, VClock, Depgraph, F, Nodebitmap, N) ->
             end
         end,
         {VClock1, Depgraph2},
-        depgraph:get(Dot, succ, Depgraph2)
-    ).
-
-%% @private
--spec update_stability(non_neg_integer(), dot(), depgraph(), fun()) -> depgraph().
-update_stability(B, Dot, Depgraph0, F) ->
-    maps:fold(
-        fun(K, V, Acc) ->
-            case depgraph:get({K, V}, stage, Acc) of
-                ?STB ->
-                    Acc;
-                _ ->
-                    B1 = depgraph:get({K, V}, bitstr, Acc),
-                    ?LOG("update_stability of Dot: ~p", [Dot]),
-                    ?LOG("B1 of Dot Pred: ~p", [B1]),
-                    ?LOG("incoming B of Dot: ~p", [B]),
-                    B2 = B1 band B,
-                    ?LOG("B band B1: ~p", [B2]),
-                    case B1 =/= B2 of
-                        true ->
-                            Depgraph1 = depgraph:update({K, V}, [{bitstr, B2}], Acc),
-                            case B2 == 0 of
-                                true ->
-                                    stabilize({K, V}, Depgraph1, F);
-                                false ->
-                                    update_stability(B, {K, V}, Depgraph1, F)
-                            end;
-                        false ->
-                            Acc
-                    end
-            end
-        end,
-        Depgraph0,
-        depgraph:get(Dot, pred, Depgraph0)
-    ).
-
-%% @private
--spec stabilize(dot(), depgraph(), fun()) -> depgraph().
-stabilize(Dot, Depgraph0, F) ->
-    ?LOG("stabilize Dot: ~p", [Dot]),
-    Preds = depgraph:get(Dot, pred, Depgraph0),
-    ?LOG("stabilize Preds: ~p", [Preds]),
-    Depgraph1 = maps:fold(
-        fun(K, V, Acc) ->
-            case depgraph:get({K, V}, stage, Acc) of
-                ?STB ->
-                    Acc;
-                _ ->
-                    ?LOG("stabilize Pred is not stable: ~p", [{K, V}]),
-                    stabilize({K, V}, Acc, F)
-            end
-        end,
-        Depgraph0,
-        Preds
-    ),
-    Pyld = depgraph:get(Dot, pyld, Depgraph1),
-    Depgraph2 = depgraph:update(Dot, [{stage, ?STB}], Depgraph1),
-    ?LOG("Marked as Stable Dot: ~p", [Dot]),
-    F({camus, {stable, Pyld, {Dot, Preds}}}),
-    Depgraph2.
-
-%% @private
--spec deletestable(dot(), depgraph()) -> depgraph().
-deletestable({Id, _}=Dot, Depgraph0) ->
-    ?LOG("in deletestable, Dot: ~p", [Dot]),
-    Succ = depgraph:get(Dot, succ, Depgraph0),
-    ?LOG("in deletestable, Succ: ~p", [Succ]),
-    Depgraph1 = maps:fold(
-        fun(K, V, Acc) ->
-            P = depgraph:get({K, V}, pred, Acc),
-            ?LOG("in deletestable, P: ~p", [P]),
-            Preds = maps:remove(Id, P),
-            ?LOG("in deletestable, Preds: ~p", [Preds]),
-            depgraph:update({K, V}, [{pred, Preds}], Acc)
-        end,
-        Depgraph0,
         Succ
-    ),
-    depgraph:delete(Dot, Depgraph1).
-
-%% @private
--spec is_stable(dot(), vclock(), depgraph()) -> boolean().
-%% checks if a dot D is stable.
-%% D stable if D already delivered and:
-%% - ready to be stable i.e. STB
-%% - already stablize and not in G
-is_stable(D, V, G) ->
-    vclock:is_element(D, V)
-    andalso case depgraph:is_element(D, G) of
-        true ->
-            depgraph:get(D, stage, G) == ?STB;
-        false ->
-            true
-    end.
+    ).
 
 %% @private
 prepare_resend(ResendList, Rcvd, Latency, SenderId) ->
